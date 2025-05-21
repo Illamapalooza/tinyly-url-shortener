@@ -82,9 +82,7 @@ export function UrlShorteningForm({
                     name="customSlug"
                     render={({ field }) => (
                       <FormItem className="max-w-sm">
-                        <FormLabel className="text-sm">
-                          Custom URL Slug
-                        </FormLabel>
+                        <FormLabel className="text-sm">Your Alias</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="your-custom-slug"

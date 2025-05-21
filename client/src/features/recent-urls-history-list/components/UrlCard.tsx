@@ -18,7 +18,7 @@ type UrlCardProps = {
 
 export function UrlCard({ url, onRemove }: UrlCardProps) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden z-10">
       <CardHeader className="pb-2">
         <CardTitle className="text-base truncate">{url.originalUrl}</CardTitle>
         <CardDescription>
@@ -27,7 +27,9 @@ export function UrlCard({ url, onRemove }: UrlCardProps) {
       </CardHeader>
       <CardContent className="pb-2">
         <div className="font-mono text-sm bg-muted p-2 rounded-md">
-          {`${BASE_URL}/${url.shortCode}`}
+          <div className="truncate overflow-hidden">
+            {`${BASE_URL}/${url.shortCode}`}
+          </div>
         </div>
       </CardContent>
       <CardFooter>

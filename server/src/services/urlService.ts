@@ -84,7 +84,7 @@ export class UrlService {
     if (customSlug) {
       const existingUrl = await db("urls").where({ shortCode }).first();
       if (existingUrl) {
-        throw new Error("Custom slug already in use");
+        throw new Error("Alias already in use");
       }
       codeExists = false;
     } else {
@@ -136,7 +136,6 @@ export class UrlService {
 
       CacheMetricsManager.recordHit();
 
-      console.log("cache hit", CacheMetricsManager.getMetrics());
       return cachedUrl;
     }
 
@@ -154,7 +153,6 @@ export class UrlService {
 
       // Add to cache for future requests
       this.cacheService.set(`url:${shortCode}`, url);
-      // Also set in global cache
       globalCache.set(`url:${shortCode}`, url);
 
       // Update TTL based on visit count for frequently accessed URLs
@@ -191,7 +189,6 @@ export class UrlService {
       return cachedUrl;
     }
 
-    // Record cache miss in metrics
     CacheMetricsManager.recordMiss();
 
     // If not in cache, fetch from database
