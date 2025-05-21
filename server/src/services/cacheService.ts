@@ -1,4 +1,5 @@
 import NodeCache from "node-cache";
+import { CacheMetricsManager } from "./cacheMetricsManager";
 
 export class CacheService {
   private cache: NodeCache;
@@ -12,39 +13,47 @@ export class CacheService {
   }
 
   get<T>(key: string): T | undefined {
-    return this.cache.get<T>(key);
+    const value = this.cache.get<T>(key);
+    if (value === undefined) {
+      CacheMetricsManager.recordMiss();
+    } else {
+      CacheMetricsManager.recordHit();
+    }
+    CacheMetricsManager.updateSize(this.cache.keys().length);
+    return value;
   }
 
   set<T>(key: string, value: T, ttl: number = 3600): boolean {
-    return this.cache.set(key, value, ttl);
+    const result = this.cache.set(key, value, ttl);
+    CacheMetricsManager.updateSize(this.cache.keys().length);
+    return result;
   }
 
   delete(key: string): number {
-    return this.cache.del(key);
+    const result = this.cache.del(key);
+    CacheMetricsManager.updateSize(this.cache.keys().length);
+    return result;
   }
 
   flush(): void {
     this.cache.flushAll();
+    CacheMetricsManager.updateSize(0);
+    CacheMetricsManager.recordCleanup();
   }
 
-  // Method to adjust TTL based on access frequency
   updateTTL(key: string, accessCount: number): boolean {
-    // Increase TTL for frequently accessed URLs (up to 24 hours)
-    const baseTTL = 3600; // 1 hour
-    const maxTTL = 86400; // 24 hours
+    const baseTTL = 3600;
+    const maxTTL = 86400;
 
     // Calculate dynamic TTL based on access count
     const dynamicTTL = Math.min(baseTTL * Math.log(accessCount + 1), maxTTL);
 
-    // Get the current value
     const value = this.cache.get(key);
     if (value === undefined) return false;
 
-    // Reset with new TTL
     return this.cache.set(key, value, dynamicTTL);
   }
 
-  // Get all recent URLs from cache
   getAllRecentUrls<T>(): T[] {
     const keys = this.cache.keys();
     const urlKeys = keys.filter((key) => key.startsWith("url:"));
@@ -55,5 +64,14 @@ export class CacheService {
         return value as T;
       })
       .filter(Boolean);
+  }
+
+  // Add a health check method to verify cache status
+  getCacheStatus() {
+    return {
+      keys: this.cache.keys().length,
+      stats: this.cache.getStats(),
+      metrics: CacheMetricsManager.getMetrics(),
+    };
   }
 }

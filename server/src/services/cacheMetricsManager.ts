@@ -44,18 +44,14 @@ export class CacheMetricsManager {
     return { ...this.metrics };
   }
 
-  // Perform cache optimization based on hit rate and memory usage
   static optimizeCache(): void {
-    // If hit rate is low (below 30%), adjust cache settings
     if (this.metrics.hitRate < 30 && this.metrics.size > 1000) {
-      // Clean up least used entries
       globalCache.flush();
       this.recordCleanup();
       console.log("Cache optimized due to low hit rate");
     }
   }
 
-  // Schedule periodic cache optimization
   static scheduleOptimization(intervalMinutes: number = 30): NodeJS.Timeout {
     return setInterval(() => {
       this.optimizeCache();
