@@ -1,5 +1,12 @@
 export type CreateUrlRequestDto = {
   originalUrl: string;
+  customSlug?: string;
+  expiration?: number;
+  utmParams?: {
+    source?: string;
+    medium?: string;
+    campaign?: string;
+  };
 };
 
 export type ShortUrlResponseDto = {
@@ -11,6 +18,7 @@ export type UrlStatsDto = {
   originalUrl: string;
   visitCount: number;
   createdAt: string;
+  expiresAt?: string;
 };
 
 export type ListUrlsResponseDto = {
@@ -19,6 +27,7 @@ export type ListUrlsResponseDto = {
   originalUrl: string;
   visitCount: number;
   createdAt: string;
+  expiresAt?: string;
 };
 
 export type UrlResponseDto = {
@@ -27,4 +36,5 @@ export type UrlResponseDto = {
   originalUrl: string;
   visitCount: number;
   createdAt: string;
+  expiresAt?: string;
 };

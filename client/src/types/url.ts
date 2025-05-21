@@ -3,6 +3,13 @@
  */
 export type CreateUrlRequest = {
   originalUrl: string;
+  customSlug?: string;
+  expiration?: number;
+  utmParams?: {
+    source?: string;
+    medium?: string;
+    campaign?: string;
+  };
 };
 
 /**
@@ -14,6 +21,7 @@ export type UrlResponse = {
   originalUrl: string;
   visitCount: number;
   createdAt: string; // ISO date string format
+  expiresAt?: string; // ISO date string format
 };
 
 /**
@@ -31,6 +39,7 @@ export type UrlStats = {
   originalUrl: string;
   visitCount: number;
   createdAt: string;
+  expiresAt?: string;
 };
 
 /**

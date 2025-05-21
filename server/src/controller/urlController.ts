@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { UrlService } from "@app/services/urlService";
+import { CreateUrlRequestDto } from "../dto/url-dto";
 
 export class UrlController {
   private urlService: UrlService;
@@ -10,16 +11,34 @@ export class UrlController {
 
   shortenUrl = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { originalUrl } = req.body;
+      const { originalUrl, customSlug, expiration, utmParams } = req.body;
 
       if (!originalUrl) {
         res.status(400).json({ error: "Original URL is required" });
         return;
       }
 
-      const shortUrl = await this.urlService.createShortUrl(originalUrl);
+      // Create the request object
+      const requestData: CreateUrlRequestDto = {
+        originalUrl,
+        customSlug,
+        expiration,
+        utmParams,
+      };
 
-      res.status(200).json(shortUrl);
+      try {
+        const shortUrl = await this.urlService.createShortUrl(requestData);
+        res.status(200).json(shortUrl);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "Custom slug already in use"
+        ) {
+          res.status(409).json({ error: "Custom slug already in use" });
+        } else {
+          throw error;
+        }
+      }
     } catch (error) {
       console.error("Error shortening URL:", error);
       res.status(500).json({ error: "Failed to shorten URL" });

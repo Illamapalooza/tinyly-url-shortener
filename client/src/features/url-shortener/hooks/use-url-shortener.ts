@@ -14,6 +14,13 @@ export function useUrlShortener() {
     try {
       const requestData: CreateUrlRequest = {
         originalUrl: values.longUrl,
+        customSlug: values.customSlug,
+        expiration: values.expiration,
+        utmParams: {
+          source: values.utmSource,
+          medium: values.utmMedium,
+          campaign: values.utmCampaign,
+        },
       };
 
       const response = await axios.post<ShortUrlResponse>(

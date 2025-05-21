@@ -1,6 +1,10 @@
 import { randomBytes } from "crypto";
 import { db } from "../db/knex";
-import { UrlResponseDto, ListUrlsResponseDto } from "../dto/url-dto";
+import {
+  UrlResponseDto,
+  ListUrlsResponseDto,
+  CreateUrlRequestDto,
+} from "../dto/url-dto";
 import { CacheService } from "./cacheService";
 import { CacheMetricsManager } from "./cacheMetricsManager";
 import { globalCache } from "../rest-api";
@@ -9,7 +13,6 @@ export class UrlService {
   private cacheService: CacheService;
 
   constructor() {
-    // Initialize cache with 1 hour TTL
     this.cacheService = new CacheService(3600);
   }
 
@@ -20,28 +23,99 @@ export class UrlService {
       .substring(0, length);
   }
 
-  async createShortUrl(originalUrl: string): Promise<UrlResponseDto> {
-    let shortCode = this.generateShortCode();
+  private processUrl(
+    originalUrl: string,
+    utmParams?: { source?: string; medium?: string; campaign?: string }
+  ): string {
+    if (
+      !utmParams ||
+      (!utmParams.source && !utmParams.medium && !utmParams.campaign)
+    ) {
+      return originalUrl;
+    }
+
+    try {
+      const url = new URL(originalUrl);
+
+      if (utmParams.source) {
+        url.searchParams.append("utm_source", utmParams.source);
+      }
+      if (utmParams.medium) {
+        url.searchParams.append("utm_medium", utmParams.medium);
+      }
+      if (utmParams.campaign) {
+        url.searchParams.append("utm_campaign", utmParams.campaign);
+      }
+
+      return url.toString();
+    } catch (error) {
+      console.error("Error processing URL with UTM parameters:", error);
+      return originalUrl;
+    }
+  }
+
+  async createShortUrl(
+    requestData: string | CreateUrlRequestDto
+  ): Promise<UrlResponseDto> {
+    // Handle both string and object input for backward compatibility
+    let originalUrl: string;
+    let customSlug: string | undefined;
+    let expiration: number | undefined;
+    let utmParams:
+      | { source?: string; medium?: string; campaign?: string }
+      | undefined;
+
+    if (typeof requestData === "string") {
+      originalUrl = requestData;
+    } else {
+      originalUrl = requestData.originalUrl;
+      customSlug = requestData.customSlug;
+      expiration = requestData.expiration;
+      utmParams = requestData.utmParams;
+    }
+
+    // Process URL with UTM parameters if exist
+    const processedUrl = this.processUrl(originalUrl, utmParams);
+
+    // Use the custom slug if provided, otherwise generate a short code
+    let shortCode = customSlug || this.generateShortCode();
     let codeExists = true;
 
-    while (codeExists) {
+    if (customSlug) {
       const existingUrl = await db("urls").where({ shortCode }).first();
+      if (existingUrl) {
+        throw new Error("Custom slug already in use");
+      }
+      codeExists = false;
+    } else {
+      while (codeExists) {
+        const existingUrl = await db("urls").where({ shortCode }).first();
 
-      if (!existingUrl) {
-        codeExists = false;
-      } else {
-        shortCode = this.generateShortCode();
+        if (!existingUrl) {
+          codeExists = false;
+        } else {
+          shortCode = this.generateShortCode();
+        }
       }
     }
 
-    const [newUrl] = await db("urls")
-      .insert({
-        shortCode,
-        originalUrl,
-        visitCount: 0,
-        createdAt: new Date(),
-      })
-      .returning("*");
+    // Calculate expiration date if provided
+    let expiresAt: Date | undefined;
+    if (expiration && expiration > 0) {
+      expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expiration);
+    }
+
+    const urlData = {
+      shortCode,
+      originalUrl: processedUrl,
+      visitCount: 0,
+      createdAt: new Date(),
+      expiresAt,
+      utmParams: utmParams ? JSON.stringify(utmParams) : null,
+    };
+
+    const [newUrl] = await db("urls").insert(urlData).returning("*");
 
     this.cacheService.set(`url:${shortCode}`, newUrl);
     // Also set in global cache
@@ -51,24 +125,33 @@ export class UrlService {
   }
 
   async getUrlByShortCode(shortCode: string): Promise<UrlResponseDto | null> {
-    // First check the cache
     const cachedUrl = this.cacheService.get<UrlResponseDto>(`url:${shortCode}`);
 
     if (cachedUrl) {
-      // Record cache hit in metrics
+      if (cachedUrl.expiresAt && new Date(cachedUrl.expiresAt) < new Date()) {
+        // URL is expired, remove it from cache and database
+        await this.removeUrlFromCache(shortCode);
+        return null;
+      }
+
       CacheMetricsManager.recordHit();
 
       console.log("cache hit", CacheMetricsManager.getMetrics());
       return cachedUrl;
     }
 
-    // Record cache miss in metrics
     CacheMetricsManager.recordMiss();
 
-    // If not in cache, fetch from database
     const url = await db("urls").where({ shortCode }).first();
 
     if (url) {
+      // Check if URL is expired
+      if (url.expiresAt && new Date(url.expiresAt) < new Date()) {
+        // URL is expired, remove it from database
+        await this.removeUrlFromCache(shortCode);
+        return null;
+      }
+
       // Add to cache for future requests
       this.cacheService.set(`url:${shortCode}`, url);
       // Also set in global cache
@@ -87,28 +170,23 @@ export class UrlService {
   async incrementVisitCount(shortCode: string): Promise<void> {
     await db("urls").where({ shortCode }).increment("visitCount", 1);
 
-    // Update the cached version if it exists
     const cachedUrl = this.cacheService.get<UrlResponseDto>(`url:${shortCode}`);
 
     if (cachedUrl) {
       cachedUrl.visitCount += 1;
 
-      // Update the cache with the new visit count
       this.cacheService.set(`url:${shortCode}`, cachedUrl);
       globalCache.set(`url:${shortCode}`, cachedUrl);
 
-      // Adjust TTL based on updated visit count
       this.cacheService.updateTTL(`url:${shortCode}`, cachedUrl.visitCount);
       globalCache.updateTTL(`url:${shortCode}`, cachedUrl.visitCount);
     }
   }
 
   async getUrlStats(shortCode: string): Promise<UrlResponseDto | null> {
-    // First check the cache
     const cachedUrl = this.cacheService.get<UrlResponseDto>(`url:${shortCode}`);
 
     if (cachedUrl) {
-      // Record cache hit in metrics
       CacheMetricsManager.recordHit();
       return cachedUrl;
     }
@@ -120,7 +198,6 @@ export class UrlService {
     const stats = await db("urls").where({ shortCode }).first();
 
     if (stats) {
-      // Add to cache for future requests
       this.cacheService.set(`url:${shortCode}`, stats);
       globalCache.set(`url:${shortCode}`, stats);
     }
@@ -129,7 +206,6 @@ export class UrlService {
   }
 
   async getAllUrls(): Promise<ListUrlsResponseDto[]> {
-    // This method intentionally doesn't use cache as it needs the latest list
     return db("urls").select("*").orderBy("createdAt", "desc");
   }
 
@@ -138,18 +214,14 @@ export class UrlService {
   }
 
   async clearUrlCache(): Promise<void> {
-    // Clear all URLs from the database
     await db("urls").delete();
 
-    // Also clear the cache
     globalCache.flush();
   }
 
   async removeUrlFromCache(shortCode: string): Promise<void> {
-    // Remove the URL from the database
     await db("urls").where({ shortCode }).delete();
 
-    // Also remove from cache
     globalCache.delete(`url:${shortCode}`);
   }
 }
