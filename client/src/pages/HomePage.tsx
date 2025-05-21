@@ -1,25 +1,20 @@
 import { Link } from "react-router";
-import reactLogo from "../assets/react.svg";
-import { Button } from "@/components/ui/button";
+import ShortenerCard from "@/components/ShortenerCard";
+import { Toaster } from "@/components/ui/toaster";
 
 function HomePage() {
   return (
-    <div className="h-screen bg-black flex justify-center items-center flex-col space-y-4 text-white">
-      <div>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} alt="React logo" className="w-36 h-36" />
-        </a>
+    <div className="min-h-screen bg-main-gradient flex flex-col items-center justify-center">
+      <ShortenerCard />
+      <footer className="fixed bottom-5 left-0 w-full text-center text-gray-500 text-xs pointer-events-none select-none">
+        © {new Date().getFullYear()} URL Shortener. Built with Lovable.
+      </footer>
+      <div className="mt-6">
+        <Link to="/second" className="text-gray-600 hover:text-gray-800">
+          Go to second page
+        </Link>
       </div>
-      <h1>Symph coding assignment page 1</h1>
-      <Button
-        variant="default"
-        className="bg-white text-black hover:bg-gray-200"
-      >
-        ShadCN UI Button
-      </Button>
-      <div className="py-4">
-        <Link to="/second">Go to second page</Link>
-      </div>
+      <Toaster />
     </div>
   );
 }
