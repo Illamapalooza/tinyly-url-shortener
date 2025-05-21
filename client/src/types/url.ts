@@ -1,18 +1,14 @@
 /**
- * URL Shortener DTOs (Data Transfer Objects)
+ * Request for creating a shortened URL
  */
-
-/**
- * Request DTO for creating a shortened URL
- */
-export type CreateUrlRequestDto = {
+export type CreateUrlRequest = {
   originalUrl: string;
 };
 
 /**
- * Response DTO for a shortened URL
+ * Response  for a shortened URL
  */
-export type UrlResponseDto = {
+export type UrlResponse = {
   id: number;
   shortCode: string;
   originalUrl: string;
@@ -23,14 +19,25 @@ export type UrlResponseDto = {
 /**
  * Simple response with just the short code
  */
-export type ShortUrlResponseDto = {
+export type ShortUrlResponse = {
   shortCode: string;
 };
 
 /**
  * Stats response for a URL
  */
-export type UrlStatsDto = {
+export type UrlStats = {
+  shortCode: string;
+  originalUrl: string;
+  visitCount: number;
+  createdAt: string;
+};
+
+/**
+ * Recent URL from cache
+ */
+export type RecentUrl = {
+  id: number;
   shortCode: string;
   originalUrl: string;
   visitCount: number;

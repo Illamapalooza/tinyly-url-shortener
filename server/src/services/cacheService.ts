@@ -43,4 +43,17 @@ export class CacheService {
     // Reset with new TTL
     return this.cache.set(key, value, dynamicTTL);
   }
+
+  // Get all recent URLs from cache
+  getAllRecentUrls<T>(): T[] {
+    const keys = this.cache.keys();
+    const urlKeys = keys.filter((key) => key.startsWith("url:"));
+
+    return urlKeys
+      .map((key) => {
+        const value = this.cache.get<T>(key);
+        return value as T;
+      })
+      .filter(Boolean);
+  }
 }

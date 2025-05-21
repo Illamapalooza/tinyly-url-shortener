@@ -3,6 +3,7 @@ import { db } from "../db/knex";
 import { UrlResponseDto, ListUrlsResponseDto } from "../dto/url-dto";
 import { CacheService } from "./cacheService";
 import { CacheMetricsManager } from "./cacheMetricsManager";
+import { globalCache } from "../rest-api";
 
 export class UrlService {
   private cacheService: CacheService;
@@ -43,6 +44,8 @@ export class UrlService {
       .returning("*");
 
     this.cacheService.set(`url:${shortCode}`, newUrl);
+    // Also set in global cache
+    globalCache.set(`url:${shortCode}`, newUrl);
 
     return newUrl;
   }
@@ -68,10 +71,13 @@ export class UrlService {
     if (url) {
       // Add to cache for future requests
       this.cacheService.set(`url:${shortCode}`, url);
+      // Also set in global cache
+      globalCache.set(`url:${shortCode}`, url);
 
       // Update TTL based on visit count for frequently accessed URLs
       if (url.visitCount > 10) {
         this.cacheService.updateTTL(`url:${shortCode}`, url.visitCount);
+        globalCache.updateTTL(`url:${shortCode}`, url.visitCount);
       }
     }
 
@@ -89,9 +95,11 @@ export class UrlService {
 
       // Update the cache with the new visit count
       this.cacheService.set(`url:${shortCode}`, cachedUrl);
+      globalCache.set(`url:${shortCode}`, cachedUrl);
 
       // Adjust TTL based on updated visit count
       this.cacheService.updateTTL(`url:${shortCode}`, cachedUrl.visitCount);
+      globalCache.updateTTL(`url:${shortCode}`, cachedUrl.visitCount);
     }
   }
 
@@ -114,6 +122,7 @@ export class UrlService {
     if (stats) {
       // Add to cache for future requests
       this.cacheService.set(`url:${shortCode}`, stats);
+      globalCache.set(`url:${shortCode}`, stats);
     }
 
     return stats || null;
@@ -122,5 +131,25 @@ export class UrlService {
   async getAllUrls(): Promise<ListUrlsResponseDto[]> {
     // This method intentionally doesn't use cache as it needs the latest list
     return db("urls").select("*").orderBy("createdAt", "desc");
+  }
+
+  getRecentUrlsFromCache(): UrlResponseDto[] {
+    return globalCache.getAllRecentUrls<UrlResponseDto>();
+  }
+
+  async clearUrlCache(): Promise<void> {
+    // Clear all URLs from the database
+    await db("urls").delete();
+
+    // Also clear the cache
+    globalCache.flush();
+  }
+
+  async removeUrlFromCache(shortCode: string): Promise<void> {
+    // Remove the URL from the database
+    await db("urls").where({ shortCode }).delete();
+
+    // Also remove from cache
+    globalCache.delete(`url:${shortCode}`);
   }
 }

@@ -1,12 +1,12 @@
 import { globalCache } from "../rest-api";
 
-interface CacheMetrics {
+type CacheMetrics = {
   hits: number;
   misses: number;
   hitRate: number;
   size: number;
   lastCleanup: Date | null;
-}
+};
 
 export class CacheMetricsManager {
   private static metrics: CacheMetrics = {
