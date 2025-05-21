@@ -1,48 +1,34 @@
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
+import urlRoutes from "./routes/urlRoutes";
+import { CacheService } from "./services/cacheService";
+import { CacheMetricsManager } from "./services/cacheMetricsManager";
+
 dotenv.config();
 
+export const globalCache = new CacheService(
+  Number(process.env.CACHE_TTL) || 3600
+);
+
 const app = express();
-import { db } from "./db/knex";
-import urlRoutes from "./routes/urlRoutes";
 
 //middleware
 app.use(cors());
 app.use(express.json());
 
 // URL Shortener routes
-app.use("/api/urls", urlRoutes);
+app.use("/", urlRoutes);
 
-/*
-##################################################
-||                                              ||
-||              Example endpoints               ||
-||                                              ||
-##################################################
-*/
+const optimizationInterval =
+  Number(process.env.CACHE_OPTIMIZATION_INTERVAL) || 30;
+const cacheOptimizationTimer =
+  CacheMetricsManager.scheduleOptimization(optimizationInterval);
 
-// Root endpoint - Returns a simple hello world message and default client port
-app.get("/", async (_req, res) => {
-  res.json({ hello: "world", "client-default-port": 3000 });
-});
-
-// GET /examples - Fetches all records from the example_foreign_table
-app.get("/examples", async (_req, res) => {
-  const docs = await db("example_foreign_table").select("*");
-  res.json({ docs });
-});
-
-// POST /examples - Creates a new record with auth method and name, returns the created document
-app.post("/examples", async (req, res) => {
-  const { authMethod, name } = req.body;
-  const [doc] = await db("example_foreign_table")
-    .insert({
-      authMethod,
-      name,
-    })
-    .returning("*");
-  res.json({ doc });
+// Handle graceful shutdown
+process.on("SIGTERM", () => {
+  clearInterval(cacheOptimizationTimer);
+  console.log("Cache optimization stopped");
 });
 
 const PORT = process.env.PORT || 8000;
