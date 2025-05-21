@@ -3,6 +3,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Copy } from "lucide-react";
+import axios, { AxiosError } from "axios";
+import BASE_URL from "@/configs/baseUrl";
+import { CreateUrlRequestDto, ShortUrlResponseDto } from "@/types/url";
 
 function isValidUrl(value: string) {
   try {
@@ -13,8 +16,6 @@ function isValidUrl(value: string) {
   }
 }
 
-const FAKE_DOMAIN = "sho.rt";
-
 export default function ShortenerCard() {
   const [longUrl, setLongUrl] = useState("");
   const [shortUrl, setShortUrl] = useState("");
@@ -22,7 +23,7 @@ export default function ShortenerCard() {
   const { toast } = useToast();
   const [error, setError] = useState("");
 
-  const handleShorten = (e: React.FormEvent) => {
+  const handleShorten = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!isValidUrl(longUrl)) {
@@ -34,11 +35,33 @@ export default function ShortenerCard() {
     setError("");
     setIsLoading(true);
 
-    setTimeout(() => {
-      const uniqueId = Math.random().toString(36).substring(2, 8);
-      setShortUrl(`https://${FAKE_DOMAIN}/${uniqueId}`);
+    try {
+      const requestData: CreateUrlRequestDto = {
+        originalUrl: longUrl,
+      };
+
+      const response = await axios.post<ShortUrlResponseDto>(
+        `${BASE_URL}/api/urls`,
+        requestData
+      );
+
+      if (response.status !== 200) {
+        throw new Error("Failed to create short URL");
+      }
+
+      const data = response.data;
+      const fullShortUrl = `${BASE_URL}/api/urls/${data.shortCode}`;
+      setShortUrl(fullShortUrl);
+    } catch (err) {
+      console.error("Error shortening URL:", err);
+      const errorMessage =
+        err instanceof AxiosError && err.response?.data?.error
+          ? err.response.data.error
+          : "Failed to shorten URL";
+      setError(errorMessage);
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
 
   const handleCopy = () => {

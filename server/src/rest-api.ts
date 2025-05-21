@@ -5,10 +5,14 @@ dotenv.config();
 
 const app = express();
 import { db } from "./db/knex";
+import urlRoutes from "./routes/urlRoutes";
 
 //middleware
 app.use(cors());
 app.use(express.json());
+
+// URL Shortener routes
+app.use("/api/urls", urlRoutes);
 
 /*
 ##################################################
