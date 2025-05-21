@@ -61,6 +61,7 @@ export function UrlShorteningForm({
                   placeholder="https://your-long-url.com"
                   className="text-base py-6 placeholder:text-gray-400 font-medium"
                   required
+                  type="url"
                   {...field}
                 />
               </FormControl>
@@ -192,7 +193,7 @@ export function UrlShorteningForm({
         <Button
           className="w-full mt-2 font-semibold text-base"
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !form.formState.isValid}
         >
           {isLoading ? <LoadingSpinner /> : "Shorten URL"}
         </Button>

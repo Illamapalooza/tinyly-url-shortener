@@ -9,6 +9,29 @@ export class UrlController {
     this.urlService = new UrlService();
   }
 
+  /**
+   * Validates if a string is a proper URL
+   * @param url URL string to validate
+   * @returns True if valid URL, false otherwise
+   */
+  private isValidUrl(url: string): boolean {
+    try {
+      new URL(url);
+
+      const urlPattern =
+        /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/;
+      return urlPattern.test(url);
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /**
+   * Shortens a URL
+   * @param req Request object containing the original URL, custom slug, expiration, and UTM parameters
+   * @param res Response object
+   * @returns void
+   */
   shortenUrl = async (req: Request, res: Response): Promise<void> => {
     try {
       const { originalUrl, customSlug, expiration, utmParams } = req.body;
@@ -18,9 +41,21 @@ export class UrlController {
         return;
       }
 
-      // Create the request object
+      if (!this.isValidUrl(originalUrl)) {
+        res.status(400).json({
+          error:
+            "Invalid URL format. Please provide a valid URL (e.g., https://example.com)",
+        });
+        return;
+      }
+
+      let normalizedUrl = originalUrl;
+      if (!/^https?:\/\//i.test(originalUrl)) {
+        normalizedUrl = `https://${originalUrl}`;
+      }
+
       const requestData: CreateUrlRequestDto = {
-        originalUrl,
+        originalUrl: normalizedUrl,
         customSlug,
         expiration,
         utmParams,
@@ -45,6 +80,12 @@ export class UrlController {
     }
   };
 
+  /**
+   * Redirects to a URL
+   * @param req Request object containing the short code
+   * @param res Response object
+   * @returns void
+   */
   redirectToUrl = async (req: Request, res: Response): Promise<void> => {
     try {
       const { shortCode } = req.params;
@@ -66,6 +107,12 @@ export class UrlController {
     }
   };
 
+  /**
+   * Gets the stats for a URL
+   * @param req Request object containing the short code
+   * @param res Response object
+   * @returns void
+   */
   getUrlStats = async (req: Request, res: Response): Promise<void> => {
     try {
       const { shortCode } = req.params;
@@ -84,6 +131,12 @@ export class UrlController {
     }
   };
 
+  /**
+   * Lists all URLs
+   * @param req Request object
+   * @param res Response object
+   * @returns void
+   */
   listUrls = async (_req: Request, res: Response): Promise<void> => {
     try {
       const urls = await this.urlService.getAllUrls();
@@ -94,6 +147,12 @@ export class UrlController {
     }
   };
 
+  /**
+   * Gets the recent URLs
+   * @param req Request object
+   * @param res Response object
+   * @returns void
+   */
   getRecentUrls = async (_req: Request, res: Response): Promise<void> => {
     try {
       const recentUrls = this.urlService.getRecentUrlsFromCache();
@@ -104,6 +163,12 @@ export class UrlController {
     }
   };
 
+  /**
+   * Clears the URL cache
+   * @param req Request object
+   * @param res Response object
+   * @returns void
+   */
   clearUrlCache = async (_req: Request, res: Response): Promise<void> => {
     try {
       await this.urlService.clearUrlCache();
@@ -116,6 +181,12 @@ export class UrlController {
     }
   };
 
+  /**
+   * Removes a URL from the cache
+   * @param req Request object containing the short code
+   * @param res Response object
+   * @returns void
+   */
   removeUrlFromCache = async (req: Request, res: Response): Promise<void> => {
     try {
       const { shortCode } = req.params;
