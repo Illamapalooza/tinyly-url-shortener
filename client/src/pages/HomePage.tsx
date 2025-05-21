@@ -1,15 +1,22 @@
 import { Link } from "react-router";
 import reactLogo from "../assets/react.svg";
+import { Button } from "@/components/ui/button";
 
 function HomePage() {
   return (
-    <div className="h-screen bg-black flex justify-center items-center flex-col space-x-4 text-white">
+    <div className="h-screen bg-black flex justify-center items-center flex-col space-y-4 text-white">
       <div>
         <a href="https://react.dev" target="_blank">
           <img src={reactLogo} alt="React logo" className="w-36 h-36" />
         </a>
       </div>
       <h1>Symph coding assignment page 1</h1>
+      <Button
+        variant="default"
+        className="bg-white text-black hover:bg-gray-200"
+      >
+        ShadCN UI Button
+      </Button>
       <div className="py-4">
         <Link to="/second">Go to second page</Link>
       </div>
