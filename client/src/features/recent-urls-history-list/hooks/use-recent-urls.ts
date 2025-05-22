@@ -5,7 +5,7 @@ import {
   fetchRecentUrls,
   clearRecentUrls,
   removeRecentUrl,
-} from "@/services/urlCacheService";
+} from "@/services/api";
 
 export function useRecentUrls() {
   const [recentUrls, setRecentUrls] = useState<RecentUrl[]>([]);

@@ -1,29 +1,15 @@
 import { Request, Response } from "express";
 import { UrlService } from "@app/services/urlService";
 import { CreateUrlRequestDto } from "../dto/url-dto";
+import * as UAParser from "ua-parser-js";
+import geoip from "geoip-lite";
+import { generateVisitorId, isValidUrl } from "@app/utils";
 
 export class UrlController {
   private urlService: UrlService;
 
   constructor() {
     this.urlService = new UrlService();
-  }
-
-  /**
-   * Validates if a string is a proper URL
-   * @param url URL string to validate
-   * @returns True if valid URL, false otherwise
-   */
-  private isValidUrl(url: string): boolean {
-    try {
-      new URL(url);
-
-      const urlPattern =
-        /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/;
-      return urlPattern.test(url);
-    } catch (err) {
-      return false;
-    }
   }
 
   /**
@@ -41,7 +27,7 @@ export class UrlController {
         return;
       }
 
-      if (!this.isValidUrl(originalUrl)) {
+      if (!isValidUrl(originalUrl)) {
         res.status(400).json({
           error:
             "Invalid URL format. Please provide a valid URL (e.g., https://example.com)",
@@ -97,8 +83,35 @@ export class UrlController {
         return;
       }
 
-      // Increment the visit count
-      await this.urlService.incrementVisitCount(shortCode);
+      const userAgent = req.headers["user-agent"] || "";
+      const ipAddress = req.ip || req.socket.remoteAddress || "";
+
+      const parser = new UAParser.UAParser(userAgent);
+      const parserResults = parser.getResult();
+
+      const deviceType = parserResults.device.type || "Desktop";
+      const browser = parserResults.browser.name || "Unknown";
+      const os = parserResults.os.name || "Unknown";
+
+      // Get visitor ID from cookie or create a new one
+      const visitorId = req.cookies?.visitor_id || generateVisitorId();
+
+      // Set cookie if not exists
+      if (!req.cookies?.visitor_id) {
+        res.cookie("visitor_id", visitorId, {
+          maxAge: 365 * 24 * 60 * 60 * 1000,
+          httpOnly: true,
+        });
+      }
+
+      // Increment the visit count with device info matching the existing schema
+      await this.urlService.incrementVisitCount(shortCode, {
+        visitorId,
+        deviceType,
+        browser,
+        os,
+        ipAddress,
+      });
 
       res.redirect(url.originalUrl);
     } catch (error) {
@@ -128,6 +141,30 @@ export class UrlController {
     } catch (error) {
       console.error("Error getting URL stats:", error);
       res.status(500).json({ error: "Failed to get URL stats" });
+    }
+  };
+
+  /**
+   * Gets the analytics for a URL
+   * @param req Request object containing the short code
+   * @param res Response object
+   * @returns void
+   */
+  getUrlAnalytics = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { shortCode } = req.params;
+
+      const analytics = await this.urlService.getUrlAnalytics(shortCode);
+
+      if (!analytics) {
+        res.status(404).json({ error: "URL not found" });
+        return;
+      }
+
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error getting URL analytics:", error);
+      res.status(500).json({ error: "Failed to get URL analytics" });
     }
   };
 
@@ -169,9 +206,9 @@ export class UrlController {
    * @param res Response object
    * @returns void
    */
-  clearUrlCache = async (_req: Request, res: Response): Promise<void> => {
+  clearUrls = async (_req: Request, res: Response): Promise<void> => {
     try {
-      await this.urlService.clearUrlCache();
+      await this.urlService.clearUrls();
       res.json({
         message: "URL cache and database records cleared successfully",
       });
@@ -187,10 +224,10 @@ export class UrlController {
    * @param res Response object
    * @returns void
    */
-  removeUrlFromCache = async (req: Request, res: Response): Promise<void> => {
+  removeUrl = async (req: Request, res: Response): Promise<void> => {
     try {
       const { shortCode } = req.params;
-      await this.urlService.removeUrlFromCache(shortCode);
+      await this.urlService.removeUrl(shortCode);
       res.json({
         message: `URL with shortCode ${shortCode} removed from cache and database`,
       });

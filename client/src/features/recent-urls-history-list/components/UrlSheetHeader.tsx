@@ -1,4 +1,3 @@
-import { History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -16,13 +15,11 @@ export function UrlSheetHeader({
       <SheetTitle className="text-xl">Recent URLs</SheetTitle>
       <Button
         variant="link"
-        size="sm"
         className="text-destructive"
         onClick={onClearHistory}
         disabled={!hasUrls}
       >
-        <History className="mr-1 size-4" />
-        Clear History
+        Clear
       </Button>
     </SheetHeader>
   );

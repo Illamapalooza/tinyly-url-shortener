@@ -52,3 +52,34 @@ export type RecentUrl = {
   visitCount: number;
   createdAt: string;
 };
+
+/**
+ * URL click data for analytics
+ */
+export type UrlClick = {
+  id: number;
+  shortCode: string;
+  visitorId: string;
+  deviceType: string | null;
+  browser: string | null;
+  os: string | null;
+  ipAddress: string | null;
+  clickedAt: string;
+};
+
+/**
+ * URL analytics data
+ */
+export type UrlAnalytics = {
+  shortCode: string;
+  originalUrl: string;
+  totalClicks: number;
+  deviceInfo: {
+    deviceTypes: Record<string, number>;
+    browsers: Record<string, number>;
+    operatingSystems: Record<string, number>;
+  };
+  clickHistory: UrlClick[];
+  createdAt: string;
+  expiresAt?: string;
+};

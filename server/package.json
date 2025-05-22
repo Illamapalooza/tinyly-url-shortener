@@ -20,17 +20,23 @@
     "@sindresorhus/slugify": "^2.2.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/geoip-lite": "^1.4.4",
+    "@types/ua-parser-js": "^0.7.39",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.17.1",
+    "geoip-lite": "^1.4.10",
     "knex": "^3.1.0",
     "node-cache": "^5.1.2",
     "nodemon": "^3.1.9",
     "pg": "^8.2.0",
-    "prompt-sync": "^4.2.0"
+    "prompt-sync": "^4.2.0",
+    "ua-parser-js": "^2.0.3",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
+    "@types/uuid": "^10.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }

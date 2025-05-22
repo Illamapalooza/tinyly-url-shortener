@@ -1,4 +1,4 @@
-import { getFullUrl } from "@/services/urlCacheService";
+import { getFullUrl } from "@/lib/utils";
 
 export function useVisitUrl() {
   const visitUrl = (shortCode: string) => {

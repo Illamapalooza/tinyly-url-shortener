@@ -1,7 +1,9 @@
-import { Copy, ExternalLink, Trash } from "lucide-react";
+import { Copy, ExternalLink, Trash, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { useVisitUrl } from "../hooks/use-visit-url";
+import { Link } from "react-router-dom";
+import { getFullUrl } from "@/lib/utils";
 
 import { HoverText } from "@/components/shared/HoverText";
 
@@ -26,7 +28,7 @@ export function UrlCardActions({ shortCode, onRemove }: UrlCardActionsProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => copyToClipboard(shortCode)}
+            onClick={() => copyToClipboard(getFullUrl(shortCode))}
           >
             <Copy className="size-4" />
           </Button>
@@ -42,6 +44,17 @@ export function UrlCardActions({ shortCode, onRemove }: UrlCardActionsProps) {
             onClick={() => visitUrl(shortCode)}
           >
             <ExternalLink className="size-4" />
+          </Button>
+        }
+      />
+
+      <HoverText
+        text="View Analytics"
+        trigger={
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/analytics/${shortCode}`}>
+              <BarChart className="size-4" />
+            </Link>
           </Button>
         }
       />

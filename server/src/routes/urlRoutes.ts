@@ -13,16 +13,19 @@ router.get("/:shortCode", urlController.redirectToUrl);
 // Get URL statistics
 router.get("/stats/:shortCode", urlController.getUrlStats);
 
+// Get URL analytics
+router.get("/analytics/:shortCode", urlController.getUrlAnalytics);
+
 // List all URLs
 router.get("/list/all", urlController.listUrls);
 
 // Get all recent URLs from cache
-router.get("/cache/recent", urlController.getRecentUrls);
+router.get("/urls/recent", urlController.getRecentUrls);
 
 // Clear URL cache
-router.delete("/cache", urlController.clearUrlCache);
+router.delete("/urls", urlController.clearUrls);
 
 // Remove specific URL from cache
-router.delete("/cache/:shortCode", urlController.removeUrlFromCache);
+router.delete("/urls/:shortCode", urlController.removeUrl);
 
 export default router;

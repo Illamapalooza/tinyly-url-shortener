@@ -1,57 +1,20 @@
-import { randomBytes } from "crypto";
 import { db } from "../db/knex";
 import {
   UrlResponseDto,
   ListUrlsResponseDto,
   CreateUrlRequestDto,
+  UrlAnalyticsDto,
 } from "../dto/url-dto";
 import { CacheService } from "./cacheService";
 import { CacheMetricsManager } from "./cacheMetricsManager";
 import { globalCache } from "../rest-api";
+import { generateShortCode, generateVisitorId, processUrl } from "../utils";
 
 export class UrlService {
   private cacheService: CacheService;
 
   constructor() {
     this.cacheService = new CacheService(3600);
-  }
-
-  private generateShortCode(length: number = 8): string {
-    return randomBytes(length)
-      .toString("base64")
-      .replace(/[+/=]/g, "")
-      .substring(0, length);
-  }
-
-  private processUrl(
-    originalUrl: string,
-    utmParams?: { source?: string; medium?: string; campaign?: string }
-  ): string {
-    if (
-      !utmParams ||
-      (!utmParams.source && !utmParams.medium && !utmParams.campaign)
-    ) {
-      return originalUrl;
-    }
-
-    try {
-      const url = new URL(originalUrl);
-
-      if (utmParams.source) {
-        url.searchParams.append("utm_source", utmParams.source);
-      }
-      if (utmParams.medium) {
-        url.searchParams.append("utm_medium", utmParams.medium);
-      }
-      if (utmParams.campaign) {
-        url.searchParams.append("utm_campaign", utmParams.campaign);
-      }
-
-      return url.toString();
-    } catch (error) {
-      console.error("Error processing URL with UTM parameters:", error);
-      return originalUrl;
-    }
   }
 
   async createShortUrl(
@@ -75,10 +38,10 @@ export class UrlService {
     }
 
     // Process URL with UTM parameters if exist
-    const processedUrl = this.processUrl(originalUrl, utmParams);
+    const processedUrl = processUrl(originalUrl, utmParams);
 
     // Use the custom slug if provided, otherwise generate a short code
-    let shortCode = customSlug || this.generateShortCode();
+    let shortCode = customSlug || generateShortCode();
     let codeExists = true;
 
     if (customSlug) {
@@ -94,7 +57,7 @@ export class UrlService {
         if (!existingUrl) {
           codeExists = false;
         } else {
-          shortCode = this.generateShortCode();
+          shortCode = generateShortCode();
         }
       }
     }
@@ -130,7 +93,7 @@ export class UrlService {
     if (cachedUrl) {
       if (cachedUrl.expiresAt && new Date(cachedUrl.expiresAt) < new Date()) {
         // URL is expired, remove it from cache and database
-        await this.removeUrlFromCache(shortCode);
+        await this.removeUrl(shortCode);
         return null;
       }
 
@@ -144,14 +107,12 @@ export class UrlService {
     const url = await db("urls").where({ shortCode }).first();
 
     if (url) {
-      // Check if URL is expired
       if (url.expiresAt && new Date(url.expiresAt) < new Date()) {
         // URL is expired, remove it from database
-        await this.removeUrlFromCache(shortCode);
+        await this.removeUrl(shortCode);
         return null;
       }
 
-      // Add to cache for future requests
       this.cacheService.set(`url:${shortCode}`, url);
       globalCache.set(`url:${shortCode}`, url);
 
@@ -165,13 +126,40 @@ export class UrlService {
     return url || null;
   }
 
-  async incrementVisitCount(shortCode: string): Promise<void> {
+  async incrementVisitCount(
+    shortCode: string,
+    visitorInfo?: {
+      visitorId?: string;
+      deviceType?: string;
+      browser?: string;
+      os?: string;
+      ipAddress?: string;
+    }
+  ): Promise<void> {
     await db("urls").where({ shortCode }).increment("visitCount", 1);
+
+    // Handle visitor tracking for analytics
+    if (visitorInfo) {
+      const visitorId = visitorInfo.visitorId || generateVisitorId();
+
+      // Record the click with device info (without checking for unique visits)
+      await db("url_clicks").insert({
+        shortCode,
+        visitorId,
+        deviceType: visitorInfo.deviceType || null,
+        browser: visitorInfo.browser || null,
+        os: visitorInfo.os || null,
+        ipAddress: visitorInfo.ipAddress || null,
+        clickedAt: new Date(),
+      });
+    }
 
     const cachedUrl = this.cacheService.get<UrlResponseDto>(`url:${shortCode}`);
 
     if (cachedUrl) {
       cachedUrl.visitCount += 1;
+
+      // We no longer track unique visits
 
       this.cacheService.set(`url:${shortCode}`, cachedUrl);
       globalCache.set(`url:${shortCode}`, cachedUrl);
@@ -210,14 +198,65 @@ export class UrlService {
     return globalCache.getAllRecentUrls<UrlResponseDto>();
   }
 
-  async clearUrlCache(): Promise<void> {
+  async clearUrls(): Promise<void> {
     await db("urls").delete();
+    await db("url_clicks").delete();
 
     globalCache.flush();
   }
 
-  async removeUrlFromCache(shortCode: string): Promise<void> {
+  async getUrlAnalytics(shortCode: string): Promise<UrlAnalyticsDto | null> {
+    const url = await db("urls").where({ shortCode }).first();
+
+    if (!url) {
+      return null;
+    }
+
+    const clicks = await db("url_clicks")
+      .where({ shortCode })
+      .orderBy("clickedAt", "desc");
+
+    // Calculate device statistics
+    const deviceTypes: Record<string, number> = {};
+    const browsers: Record<string, number> = {};
+    const operatingSystems: Record<string, number> = {};
+
+    clicks.forEach((click) => {
+      // Count device types
+      if (click.deviceType) {
+        deviceTypes[click.deviceType] =
+          (deviceTypes[click.deviceType] || 0) + 1;
+      }
+
+      // Count browsers
+      if (click.browser) {
+        browsers[click.browser] = (browsers[click.browser] || 0) + 1;
+      }
+
+      // Count operating systems
+      if (click.os) {
+        operatingSystems[click.os] = (operatingSystems[click.os] || 0) + 1;
+      }
+    });
+
+    return {
+      shortCode: url.shortCode,
+      originalUrl: url.originalUrl,
+      totalClicks: url.visitCount,
+      deviceInfo: {
+        deviceTypes,
+        browsers,
+        operatingSystems,
+      },
+      clickHistory: clicks,
+      createdAt: url.createdAt,
+      expiresAt: url.expiresAt,
+    };
+  }
+
+  async removeUrl(shortCode: string): Promise<void> {
     await db("urls").where({ shortCode }).delete();
+    await db("url_clicks").where({ shortCode }).delete();
 
     globalCache.delete(`url:${shortCode}`);
   }
