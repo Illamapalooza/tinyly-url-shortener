@@ -1,5 +1,4 @@
 import { CacheService } from "../services/cacheService";
-import { CacheMetricsManager } from "../services/cacheMetricsManager";
 
 export function testCacheOperation() {
   console.log("Testing cache functionality...");

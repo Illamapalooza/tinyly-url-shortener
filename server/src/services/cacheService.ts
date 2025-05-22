@@ -3,42 +3,46 @@ import { CacheMetricsManager } from "./cacheMetricsManager";
 
 export class CacheService {
   private cache: NodeCache;
+  private metricsManager: CacheMetricsManager;
+  private name: string;
 
-  constructor(ttlSeconds: number = 3600) {
+  constructor(ttlSeconds: number = 3600, name: string = "default") {
     this.cache = new NodeCache({
       stdTTL: ttlSeconds,
       checkperiod: ttlSeconds * 0.2,
       useClones: false,
     });
+    this.name = name;
+    this.metricsManager = new CacheMetricsManager(this);
   }
 
   get<T>(key: string): T | undefined {
     const value = this.cache.get<T>(key);
     if (value === undefined) {
-      CacheMetricsManager.recordMiss();
+      this.metricsManager.recordMiss();
     } else {
-      CacheMetricsManager.recordHit();
+      this.metricsManager.recordHit();
     }
-    CacheMetricsManager.updateSize(this.cache.keys().length);
+    this.metricsManager.updateSize(this.cache.keys().length);
     return value;
   }
 
   set<T>(key: string, value: T, ttl: number = 3600): boolean {
     const result = this.cache.set(key, value, ttl);
-    CacheMetricsManager.updateSize(this.cache.keys().length);
+    this.metricsManager.updateSize(this.cache.keys().length);
     return result;
   }
 
   delete(key: string): number {
     const result = this.cache.del(key);
-    CacheMetricsManager.updateSize(this.cache.keys().length);
+    this.metricsManager.updateSize(this.cache.keys().length);
     return result;
   }
 
   flush(): void {
     this.cache.flushAll();
-    CacheMetricsManager.updateSize(0);
-    CacheMetricsManager.recordCleanup();
+    this.metricsManager.updateSize(0);
+    this.metricsManager.recordCleanup();
   }
 
   updateTTL(key: string, accessCount: number): boolean {
@@ -69,9 +73,22 @@ export class CacheService {
   // Add a health check method to verify cache status
   getCacheStatus() {
     return {
+      name: this.name,
       keys: this.cache.keys().length,
       stats: this.cache.getStats(),
-      metrics: CacheMetricsManager.getMetrics(),
+      metrics: this.metricsManager.getMetrics(),
     };
+  }
+
+  getMetricsManager(): CacheMetricsManager {
+    return this.metricsManager;
+  }
+
+  scheduleOptimization(intervalMinutes: number = 30): NodeJS.Timeout {
+    return this.metricsManager.scheduleOptimization(intervalMinutes);
+  }
+
+  stopOptimization(): void {
+    this.metricsManager.stopOptimization();
   }
 }

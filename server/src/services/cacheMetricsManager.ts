@@ -1,4 +1,4 @@
-import { globalCache } from "../rest-api";
+import { CacheService } from "./cacheService";
 
 type CacheMetrics = {
   hits: number;
@@ -9,7 +9,7 @@ type CacheMetrics = {
 };
 
 export class CacheMetricsManager {
-  private static metrics: CacheMetrics = {
+  private metrics: CacheMetrics = {
     hits: 0,
     misses: 0,
     hitRate: 0,
@@ -17,44 +17,61 @@ export class CacheMetricsManager {
     lastCleanup: null,
   };
 
-  static recordHit(): void {
+  private cacheInstance?: CacheService;
+  private optimizationTimer?: NodeJS.Timeout;
+
+  constructor(cacheInstance?: CacheService) {
+    this.cacheInstance = cacheInstance;
+  }
+
+  recordHit(): void {
     this.metrics.hits++;
     this.updateHitRate();
   }
 
-  static recordMiss(): void {
+  recordMiss(): void {
     this.metrics.misses++;
     this.updateHitRate();
   }
 
-  static updateSize(size: number): void {
+  updateSize(size: number): void {
     this.metrics.size = size;
   }
 
-  static recordCleanup(): void {
+  recordCleanup(): void {
     this.metrics.lastCleanup = new Date();
   }
 
-  private static updateHitRate(): void {
+  private updateHitRate(): void {
     const total = this.metrics.hits + this.metrics.misses;
     this.metrics.hitRate = total > 0 ? (this.metrics.hits / total) * 100 : 0;
   }
 
-  static getMetrics(): CacheMetrics {
+  getMetrics(): CacheMetrics {
     return { ...this.metrics };
   }
 
-  static optimizeCache(): void {
+  optimizeCache(): void {
     if (this.metrics.hitRate < 30 && this.metrics.size > 1000) {
-      globalCache.flush();
+      this.cacheInstance?.flush();
       this.recordCleanup();
       console.log("Cache optimized due to low hit rate");
     }
   }
 
-  static scheduleOptimization(intervalMinutes: number = 30): NodeJS.Timeout {
-    return setInterval(() => {
+  scheduleOptimization(intervalMinutes: number = 30): NodeJS.Timeout {
+    this.stopOptimization();
+
+    this.optimizationTimer = setInterval(() => {
       this.optimizeCache();
     }, intervalMinutes * 60 * 1000);
+
+    return this.optimizationTimer;
+  }
+
+  stopOptimization(): void {
+    if (this.optimizationTimer) {
+      clearInterval(this.optimizationTimer);
+    }
   }
 }

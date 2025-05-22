@@ -3,13 +3,15 @@ import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import urlRoutes from "./routes/urlRoutes";
-import { CacheService } from "./services/cacheService";
-import { CacheMetricsManager } from "./services/cacheMetricsManager";
+import { CacheManager } from "./services/cacheManager";
 import { specs } from "./swagger";
 
 dotenv.config();
 
-export const globalCache = new CacheService(
+// Initialize the cache manager and get the global cache
+const cacheManager = CacheManager.getInstance();
+export const globalCache = cacheManager.getCache(
+  "global",
   Number(process.env.CACHE_TTL) || 3600
 );
 
@@ -28,11 +30,10 @@ app.use("/", urlRoutes);
 // Caching layer
 const optimizationInterval =
   Number(process.env.CACHE_OPTIMIZATION_INTERVAL) || 30;
-const cacheOptimizationTimer =
-  CacheMetricsManager.scheduleOptimization(optimizationInterval);
+cacheManager.scheduleOptimizationForAll(optimizationInterval);
 
 process.on("SIGTERM", () => {
-  clearInterval(cacheOptimizationTimer);
+  cacheManager.stopOptimizationForAll();
   console.log("Cache optimization stopped");
 });
 

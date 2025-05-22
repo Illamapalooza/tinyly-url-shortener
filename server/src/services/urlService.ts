@@ -6,7 +6,7 @@ import {
   UrlAnalyticsDto,
 } from "../dto/url-dto";
 import { CacheService } from "./cacheService";
-import { CacheMetricsManager } from "./cacheMetricsManager";
+import { CacheManager } from "./cacheManager";
 import { globalCache } from "../rest-api";
 import { generateShortCode, generateVisitorId, processUrl } from "../utils";
 
@@ -14,7 +14,8 @@ export class UrlService {
   private cacheService: CacheService;
 
   constructor() {
-    this.cacheService = new CacheService(3600);
+    // Get the URL-specific cache from the CacheManager
+    this.cacheService = CacheManager.getInstance().getCache("urlCache", 3600);
   }
 
   async createShortUrl(
@@ -37,10 +38,9 @@ export class UrlService {
       utmParams = requestData.utmParams;
     }
 
-    // Process URL with UTM parameters if exist
     const processedUrl = processUrl(originalUrl, utmParams);
 
-    // Use the custom slug if provided, otherwise generate a short code
+    // Use the custom slug if provided, otherwise generate short code
     let shortCode = customSlug || generateShortCode();
     let codeExists = true;
 
@@ -97,12 +97,10 @@ export class UrlService {
         return null;
       }
 
-      CacheMetricsManager.recordHit();
+      console.log("URL found in cache", cachedUrl);
 
       return cachedUrl;
     }
-
-    CacheMetricsManager.recordMiss();
 
     const url = await db("urls").where({ shortCode }).first();
 
@@ -142,7 +140,6 @@ export class UrlService {
     if (visitorInfo) {
       const visitorId = visitorInfo.visitorId || generateVisitorId();
 
-      // Record the click with device info (without checking for unique visits)
       await db("url_clicks").insert({
         shortCode,
         visitorId,
@@ -159,8 +156,6 @@ export class UrlService {
     if (cachedUrl) {
       cachedUrl.visitCount += 1;
 
-      // We no longer track unique visits
-
       this.cacheService.set(`url:${shortCode}`, cachedUrl);
       globalCache.set(`url:${shortCode}`, cachedUrl);
 
@@ -173,11 +168,8 @@ export class UrlService {
     const cachedUrl = this.cacheService.get<UrlResponseDto>(`url:${shortCode}`);
 
     if (cachedUrl) {
-      CacheMetricsManager.recordHit();
       return cachedUrl;
     }
-
-    CacheMetricsManager.recordMiss();
 
     // If not in cache, fetch from database
     const stats = await db("urls").where({ shortCode }).first();
