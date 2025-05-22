@@ -12,37 +12,41 @@ export function UrlAnalyticsPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto py-8 px-4">
-        <AnalyticsHeader shortCode={shortCode || ""} />
-        <Alert variant="destructive">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      <div className="bg-main-gradient">
+        <div className="container mx-auto py-8 px-4">
+          <AnalyticsHeader shortCode={shortCode || ""} />
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      {isLoading ? (
-        <LoadingSkeleton />
-      ) : analytics ? (
-        <>
-          <AnalyticsHeader shortCode={analytics.shortCode} />
-          <SummaryStats analytics={analytics} />
-          <AnalyticsChartsSection analytics={analytics} />
-        </>
-      ) : (
-        <>
-          <AnalyticsHeader shortCode={shortCode || ""} />
-          <Alert>
-            <AlertTitle>Not Found</AlertTitle>
-            <AlertDescription>
-              The URL with shortcode {shortCode} was not found.
-            </AlertDescription>
-          </Alert>
-        </>
-      )}
+    <div className="bg-main-gradient">
+      <div className="container mx-auto py-8 px-4">
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : analytics ? (
+          <>
+            <AnalyticsHeader shortCode={analytics.shortCode} />
+            <SummaryStats analytics={analytics} />
+            <AnalyticsChartsSection analytics={analytics} />
+          </>
+        ) : (
+          <>
+            <AnalyticsHeader shortCode={shortCode || ""} />
+            <Alert>
+              <AlertTitle>Not Found</AlertTitle>
+              <AlertDescription>
+                The URL with shortcode {shortCode} was not found.
+              </AlertDescription>
+            </Alert>
+          </>
+        )}
+      </div>
     </div>
   );
 }
