@@ -1,9 +1,11 @@
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
+import swaggerUi from "swagger-ui-express";
 import urlRoutes from "./routes/urlRoutes";
 import { CacheService } from "./services/cacheService";
 import { CacheMetricsManager } from "./services/cacheMetricsManager";
+import { specs } from "./swagger";
 
 dotenv.config();
 
@@ -16,6 +18,9 @@ const app = express();
 //middleware
 app.use(cors());
 app.use(express.json());
+
+// Swagger API documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
 // URL Shortener routes
 app.use("/", urlRoutes);
@@ -34,4 +39,7 @@ process.on("SIGTERM", () => {
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`server has started on port ${PORT}`);
+  console.log(
+    `API Documentation available at http://localhost:${PORT}/api-docs`
+  );
 });

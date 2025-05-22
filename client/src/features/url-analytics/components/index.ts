@@ -3,7 +3,7 @@ export * from "./BrowserChart";
 export * from "./OSChart";
 export * from "./WeeklyClicksChart";
 export * from "./GenericPieChart";
-export * from "./constants";
+export * from "../constants";
 export * from "./AnalyticsHeader";
 export * from "./SummaryStats";
 export * from "./LoadingSkeleton";

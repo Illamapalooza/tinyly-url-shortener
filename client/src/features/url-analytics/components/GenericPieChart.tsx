@@ -7,7 +7,7 @@ import {
   Legend,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { COLORS } from "./constants";
+import { COLORS } from "../constants";
 
 export type PieChartData = {
   name: string;
