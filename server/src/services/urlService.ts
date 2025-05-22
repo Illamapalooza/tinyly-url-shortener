@@ -97,8 +97,6 @@ export class UrlService {
         return null;
       }
 
-      console.log("URL found in cache", cachedUrl);
-
       return cachedUrl;
     }
 

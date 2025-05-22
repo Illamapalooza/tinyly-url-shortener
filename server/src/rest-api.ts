@@ -5,6 +5,9 @@ import swaggerUi from "swagger-ui-express";
 import urlRoutes from "./routes/urlRoutes";
 import { CacheManager } from "./services/cacheManager";
 import { specs } from "./swagger";
+import logger from "./utils/logger";
+import { httpLogger } from "./utils/httpLogger";
+import { errorHandler } from "./utils/errorHandler";
 
 dotenv.config();
 
@@ -20,6 +23,7 @@ const app = express();
 //middleware
 app.use(cors());
 app.use(express.json());
+app.use(httpLogger);
 
 // Swagger API documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
@@ -27,20 +31,33 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 // URL Shortener routes
 app.use("/", urlRoutes);
 
+app.use(errorHandler);
+
 // Caching layer
 const optimizationInterval =
   Number(process.env.CACHE_OPTIMIZATION_INTERVAL) || 30;
 cacheManager.scheduleOptimizationForAll(optimizationInterval);
 
+// Handle unexpected errors
+process.on("uncaughtException", (error) => {
+  logger.error(`Uncaught Exception: ${error.message}`, error);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  process.exit(1);
+});
+
 process.on("SIGTERM", () => {
   cacheManager.stopOptimizationForAll();
-  console.log("Cache optimization stopped");
+  logger.info("Cache optimization stopped");
 });
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
-  console.log(`server has started on port ${PORT}`);
-  console.log(
+  logger.info(`Server has started on port ${PORT}`);
+  logger.info(
     `API Documentation available at http://localhost:${PORT}/api-docs`
   );
 });
