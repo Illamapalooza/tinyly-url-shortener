@@ -25,12 +25,12 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 // URL Shortener routes
 app.use("/", urlRoutes);
 
+// Caching layer
 const optimizationInterval =
   Number(process.env.CACHE_OPTIMIZATION_INTERVAL) || 30;
 const cacheOptimizationTimer =
   CacheMetricsManager.scheduleOptimization(optimizationInterval);
 
-// Handle graceful shutdown
 process.on("SIGTERM", () => {
   clearInterval(cacheOptimizationTimer);
   console.log("Cache optimization stopped");
