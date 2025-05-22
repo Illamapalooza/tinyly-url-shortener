@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getFullUrl } from "@/lib/utils";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 
 type AnalyticsHeaderProps = {
   shortCode: string;
@@ -9,11 +10,7 @@ type AnalyticsHeaderProps = {
 
 export function AnalyticsHeader({ shortCode }: AnalyticsHeaderProps) {
   const shortUrl = getFullUrl(shortCode);
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(shortUrl);
-    alert("Short URL copied to clipboard");
-  };
+  const { copyToClipboard } = useCopyToClipboard();
 
   return (
     <div className="mb-8">
@@ -29,7 +26,11 @@ export function AnalyticsHeader({ shortCode }: AnalyticsHeaderProps) {
         <h1 className="text-3xl font-bold break-all">{shortUrl}</h1>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={copyToClipboard}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => copyToClipboard(shortUrl)}
+          >
             <Copy className="mr-2 h-4 w-4" /> Copy
           </Button>
 

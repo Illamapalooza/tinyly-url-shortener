@@ -15,10 +15,6 @@ export const removeRecentUrl = async (shortCode: string): Promise<void> => {
   await axios.delete(`${BASE_URL}/urls/${shortCode}`);
 };
 
-export const getFullUrl = (shortCode: string): string => {
-  return `${BASE_URL}/${shortCode}`;
-};
-
 export const fetchUrlAnalytics = async (
   shortCode: string
 ): Promise<UrlAnalytics> => {
