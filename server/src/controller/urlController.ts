@@ -53,9 +53,9 @@ export class UrlController {
       } catch (error) {
         if (
           error instanceof Error &&
-          error.message === "Custom slug already in use"
+          error.message === "Alias already in use"
         ) {
-          res.status(409).json({ error: "Custom slug already in use" });
+          res.status(409).json({ error: "Alias already in use" });
         } else {
           throw error;
         }
