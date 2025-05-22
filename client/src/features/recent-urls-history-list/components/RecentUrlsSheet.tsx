@@ -15,7 +15,7 @@ export default function RecentUrlsSheet({
   open,
   onOpenChange,
 }: RecentUrlsSheetProps) {
-  const { recentUrls, isLoading, fetchRecentUrls, clearCache, removeUrl } =
+  const { recentUrls, isLoading, fetchRecentUrls, clearRecentUrls, removeUrl } =
     useRecentUrls();
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function RecentUrlsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-1/2 overflow-y-auto">
         <UrlSheetHeader
-          onClearHistory={clearCache}
+          onClearHistory={clearRecentUrls}
           hasUrls={recentUrls.length > 0}
         />
         {renderContent()}

@@ -29,7 +29,7 @@ export function useRecentUrls() {
     }
   };
 
-  const handleClearCache = async () => {
+  const handleClearUrls = async () => {
     try {
       await clearRecentUrls();
       setRecentUrls([]);
@@ -71,7 +71,7 @@ export function useRecentUrls() {
     recentUrls,
     isLoading,
     fetchRecentUrls: handleFetchRecentUrls,
-    clearCache: handleClearCache,
+    clearRecentUrls: handleClearUrls,
     removeUrl: handleRemoveUrl,
   };
 }
